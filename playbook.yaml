@@ -1,0 +1,63 @@
+---
+- name: Compile and install latest sudo from source
+  hosts: all
+  become: true
+  vars:
+    sudo_version: "1.9.17p1"
+    install_prefix: "/usr"
+    build_dir: "/tmp/sudo-build"
+    local_tarball_path: "./sudo-1.9.17p1.tar"
+    remote_dest_path: "/tmp/sudo-build/sudo-1.9.17p1.tar"
+
+  tasks:
+
+    - name: Install build dependencies
+      apt:
+        name:
+          - build-essential
+          - libpam0g-dev
+          - libldap2-dev
+          - libssl-dev
+          - libz-dev
+          - wget
+        state: present
+        #update_cache: yes
+
+    - name: Create build directory
+      file:
+        path: "{{ build_dir }}"
+        state: directory
+
+    - name: Copy sudo tarball to remote server
+      copy:
+        src: "{{ local_tarball_path }}"
+        dest: "{{ remote_dest_path }}"
+        mode: '0644'
+
+    - name: Extract source
+      unarchive:
+        src: "{{ build_dir }}/sudo-1.9.17p1.tar"
+        dest: "{{ build_dir }}"
+        remote_src: yes
+
+    - name: Backup current sudo
+      shell: cp /usr/bin/sudo /usr/bin/sudo.bak
+      args:
+        creates: /usr/bin/sudo.bak
+
+    - name: Compile and install sudo
+      shell: |
+        cd {{ build_dir }}/sudo-{{ sudo_version }}
+        ./configure --prefix={{ install_prefix }}
+        make
+        make install
+      args:
+        executable: /bin/bash
+
+    - name: Verify installed sudo version
+      command: /usr/bin/sudo --version
+      register: sudo_version_output
+
+    - name: Show sudo version
+      debug:
+        msg: "{{ sudo_version_output.stdout }}"

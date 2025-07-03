@@ -45,6 +45,12 @@
       args:
         creates: /usr/bin/sudo.bak
 
+    - name: Get installed sudo version
+      command: "{{ install_prefix }}/bin/sudo -V"
+      register: sudo_installed
+      failed_when: false
+      changed_when: false
+
     - name: Compile and install sudo
       shell: |
         cd {{ build_dir }}/sudo-{{ sudo_version }}
@@ -53,6 +59,7 @@
         make install
       args:
         executable: /bin/bash
+      when: "'Sudo version {{ sudo_version }}' not in sudo_installed.stdout"
 
     - name: Verify installed sudo version
       command: /usr/bin/sudo --version
